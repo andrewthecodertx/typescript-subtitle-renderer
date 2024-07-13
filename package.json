@@ -1,0 +1,24 @@
+{
+  "name": "subtitle-renderer",
+  "module": "src/index.ts",
+  "type": "module",
+  "version": "0.0.1",
+  "license": "MIT",
+  "scripts": {
+    "test": "jest",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@jest/globals": "latest",
+    "@types/bun": "latest",
+    "@types/jest": "latest",
+    "@types/node": "latest",
+    "jest": "latest",
+    "jest-environment-jsdom": "latest",
+    "ts-jest": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "latest"
+  },
+  "dependencies": {}
+}
