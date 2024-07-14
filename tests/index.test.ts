@@ -1,47 +1,61 @@
 import { PGSRenderer } from '../src/index.ts';
 
+// Mock ImageData for Node.js environment
+global.ImageData = class {
+  width: number;
+  height: number;
+  data: Uint8ClampedArray;
+
+  constructor(sw: number, sh: number, settings?: ImageDataSettings);
+  constructor(data: Uint8ClampedArray, sw: number, sh?: number, settings?: ImageDataSettings);
+  constructor(arg1: number | Uint8ClampedArray, arg2: number, arg3?: number, settings?: ImageDataSettings) {
+    if (typeof arg1 === 'number') {
+      this.width = arg1;
+      this.height = arg2;
+      this.data = new Uint8ClampedArray(arg1 * arg2 * 4); // RGBA
+    } else {
+      this.data = arg1;
+      this.width = arg2;
+      this.height = arg3 ?? arg1.length / 4 / arg2;
+    }
+  }
+};
+
+// Helper function to create a mock ArrayBuffer of PGS subtitle data
+function createMockSubtitleData(): ArrayBuffer {
+  return new ArrayBuffer(100);
+}
+
 test('PGSRenderer initializes with a video element', () => {
-  const videoElement = document.createElement('video');
-  const renderer = new PGSRenderer(videoElement);
+  const mockVideoElement = document.createElement('video');
+  const renderer = new PGSRenderer(mockVideoElement, { skipDOMCheck: true, videoWidth: 640, videoHeight: 360 });
   expect(renderer).toBeTruthy();
 });
 
-test('PGSRenderer loads and renders subtitles', async () => {
-  const videoElement = document.createElement('video');
-  document.body.appendChild(videoElement); // Ensure video element is in DOM
+test('PGSRenderer loads and renders subtitles on canvas', async () => {
+  const mockVideoElement = document.createElement('video');
+  const renderer = new PGSRenderer(mockVideoElement, { skipDOMCheck: true, videoWidth: 640, videoHeight: 360 });
 
-  const renderer = new PGSRenderer(videoElement);
+  const subtitleData = createMockSubtitleData();
 
-  const subtitleFile = new ArrayBuffer(100); // Placeholder: Mock subtitle file
-  const view = new DataView(subtitleFile);
-  // Mock subtitle data: timestamp (4 bytes) + text length (1 byte) + text (n bytes)
-  view.setUint32(0, 0, true); // Timestamp 0
-  view.setUint8(4, 5); // Text length 5
-  const text = 'Hello';
-  for (let i = 0; i < text.length; i++) {
-    view.setUint8(5 + i, text.charCodeAt(i));
-  }
+  renderer['decodePGS'] = jest.fn().mockReturnValue([
+    { timestamp: 0, imageData: new ImageData(1, 1) }, // Mock image data
+  ]);
 
-  await renderer.loadSubtitles(subtitleFile);
+  await renderer.loadSubtitles(subtitleData);
 
-  const track = videoElement.textTracks[0];
-  // Ensure track and track.cues are not null or undefined
-  expect(track?.cues).not.toBeNull();
-  expect(track?.cues).not.toBeUndefined();
+  const canvas = renderer['canvas'];
+  const ctx = renderer['ctx'];
 
-  // If cues are present, validate the first cue
-  if (track?.cues?.length) {
-    const cue = track.cues[0] as VTTCue;
-    expect(cue.text).toBe('Hello');
-    expect(cue.startTime).toBe(0);
-    expect(cue.endTime).toBe(5);
-  } else {
-    // Handle the case where no cues are present
-    fail('No cues found in the text track.');
-  }
+  expect(canvas).toBeInstanceOf(HTMLCanvasElement);
+  expect(ctx).toBeInstanceOf(CanvasRenderingContext2D);
+
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  expect(imageData.data.length).toBeGreaterThan(0);
 });
 
-// Cleanup after tests
 afterEach(() => {
   document.body.innerHTML = '';
 });

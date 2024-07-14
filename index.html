@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PGS Subtitle Renderer Test</title>
+</head>
+<body>
+  <video id="videoPlayer" controls>
+    <!-- Placeholder video source -->
+    <source src="sample-video.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+
+  <canvas id="subtitleCanvas" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
+
+  <script type="module">
+    import { PGSRenderer } from './src/index.js';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const videoElement = document.getElementById('videoPlayer');
+      const canvasElement = document.getElementById('subtitleCanvas');
+
+      if (!(videoElement instanceof HTMLVideoElement) || !(canvasElement instanceof HTMLCanvasElement)) {
+        console.error('Failed to find video or canvas elements.');
+        return;
+      }
+
+      // Ensure video element is appended to the DOM
+      if (!videoElement.parentElement) {
+        document.body.appendChild(videoElement);
+      }
+
+      const renderer = new PGSRenderer(videoElement);
+      const subtitleData = await fetch('sample-subtitles.pgs').then(response => response.arrayBuffer());
+
+      // Mock decoding function for testing (replace with actual implementation)
+      renderer['decodePGS'] = jest.fn().mockReturnValue([
+        { timestamp: 0, imageData: new ImageData(1, 1) } // Mock image data
+      ]);
+
+      await renderer.loadSubtitles(subtitleData);
+    });
+  </script>
+</body>
+</html>

@@ -1,52 +1,59 @@
 class PGSRenderer {
   private videoElement: HTMLVideoElement;
-  private subtitles: { timestamp: number; text: string }[] = [];
+  private canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
+  private subtitles: { timestamp: number; imageData: ImageData }[] = [];
+  private videoWidth: number;
+  private videoHeight: number;
 
-  constructor(videoElement: HTMLVideoElement) {
+  constructor(videoElement: HTMLVideoElement, options: { skipDOMCheck?: boolean; videoWidth?: number; videoHeight?: number } = {}) {
     this.videoElement = videoElement;
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d')!;
+    this.videoWidth = options.videoWidth || this.videoElement.videoWidth;
+    this.videoHeight = options.videoHeight || this.videoElement.videoHeight;
+    
+    if (!options.skipDOMCheck) {
+      this.initCanvas();
+    } else {
+      this.initCanvasDimensions();
+    }
   }
 
-  async loadSubtitles(subtitleFile: ArrayBuffer) {
-    // Parse subtitles
-    this.subtitles = this.parsePGS(subtitleFile);
+  private initCanvas() {
+    if (!this.videoElement.parentElement) {
+      throw new Error('Video element must be appended to the DOM before initializing PGSRenderer.');
+    }
+    this.initCanvasDimensions();
+    this.videoElement.parentElement.appendChild(this.canvas);
+  }
 
-    // Render subtitles
+  private initCanvasDimensions() {
+    this.canvas.width = this.videoWidth;
+    this.canvas.height = this.videoHeight;
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.top = '0';
+    this.canvas.style.left = '0';
+    this.canvas.style.pointerEvents = 'none'; // Make canvas transparent to pointer events
+  }
+
+  async loadSubtitles(subtitleData: ArrayBuffer) {
+    this.subtitles = this.decodePGS(subtitleData);
     this.renderSubtitles();
   }
 
-  private parsePGS(subtitleFile: ArrayBuffer): { timestamp: number; text: string }[] {
-    const view = new DataView(subtitleFile);
-    const subtitles: { timestamp: number; text: string }[] = [];
-
-    // Basic parsing logic (placeholder, needs proper PGS parsing logic)
-    let i = 0;
-    while (i < view.byteLength) {
-      const timestamp = view.getUint32(i, true); // Placeholder: Read 4 bytes for timestamp
-      const textLength = view.getUint8(i + 4); // Placeholder: Read 1 byte for text length
-      let text = '';
-      for (let j = 0; j < textLength; j++) {
-        text += String.fromCharCode(view.getUint8(i + 5 + j)); // Placeholder: Read text characters
-      }
-      subtitles.push({ timestamp, text });
-      i += 5 + textLength; // Move to the next subtitle entry
-    }
-
-    return subtitles;
+  private decodePGS(subtitleData: ArrayBuffer): { timestamp: number; imageData: ImageData }[] {
+    // Placeholder decoding logic; replace with actual PGS decoding algorithm
+    return [];
   }
 
   private renderSubtitles() {
-    let track = this.videoElement.textTracks[0];
-
-    // Create a new track if one does not exist
-    if (!track) {
-      track = this.videoElement.addTextTrack('subtitles', 'English', 'en');
-    }
-
-    track.mode = 'showing'; // Make the subtitles visible
-
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.subtitles.forEach(subtitle => {
-      const cue = new VTTCue(subtitle.timestamp, subtitle.timestamp + 5, subtitle.text); // Placeholder: duration of 5 seconds
-      track?.addCue(cue); // Ensure track is not null before adding cues
+      const { timestamp, imageData } = subtitle;
+      setTimeout(() => {
+        this.ctx.putImageData(imageData, 0, 0);
+      }, timestamp * 1000);
     });
   }
 }
